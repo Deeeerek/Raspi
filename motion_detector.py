@@ -22,7 +22,7 @@ if args.get("video", None) is None:
 else:
     camera = cv2.VideoCapture(args["video"])
 
-print(camera)
+#print(camera)
 
 # 初始化视频流的第一帧
 firstFrame = None
