@@ -35,6 +35,7 @@ while True:
  
     # 如果不能抓取到一帧，说明我们到了视频的结尾
     if not grabbed:
+        print("grabbed none")
         break
  
     # 调整该帧的大小，转换为灰阶图像并且对其进行高斯模糊
@@ -84,6 +85,7 @@ while True:
  
     # 如果q键被按下，跳出循环
     if key == ord("q"):
+        print("break on q")
         break
  
 # 清理摄像机资源并关闭打开的窗口
