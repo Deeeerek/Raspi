@@ -1,26 +1,28 @@
-# 导入必须的包
 from pyimagesearch.tempimage import TempImage
-from dropbox.client import DropboxOAuth2FlowNoRedirect
-from dropbox.client import DropboxClient
+#from dropbox.client import DropboxOAuth2FlowNoRedirect
+#from dropbox.client import DropboxClient
+import imp
+#dropbox=imp.load_source('dropbox','/usr/local/lib/python2.7/dist-packages/dropbox')
+#from dropbox import client
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import argparse
 import warnings
 import datetime
+import sys
+sys.path.append('/usr/local/lib/python2.7/dist-packages')
 import imutils
+#imutils=imp.load_source('imutils','/usr/local/lib/python2.7/dist-packages/imutils')
 import json
 import time
 import cv2
  
-# 构建 argument parser 并解析
-参数
+# 
 ap = argparse.ArgumentParser()
-ap.add_argument("-c", "--conf", required=True,
-    help="path to the JSON configuration file")
+ap.add_argument("-c", "--conf", required=True,help="path to the JSON configuration file")
 args = vars(ap.parse_args())
  
-# 过滤警告，加载配置文件并且初始化Dropbox
-# 客户端
+# 
 warnings.filterwarnings("ignore")
 conf = json.load(open(args["conf"]))
 client = None
@@ -28,26 +30,27 @@ client = None
 # check to see if the Dropbox should be used
 if conf["use_dropbox"]:
 	# connect to dropbox and start the session authorization process
-	flow = DropboxOAuth2FlowNoRedirect(conf["dropbox_key"], 
-conf["dropbox_secret"])
-	print "[INFO] Authorize this application: 
-{}".format(flow.start())
+	flow = DropboxOAuth2FlowNoRedirect(conf["dropbox_key"], conf["dropbox_secret"])
+	print "[INFO] Authorize this application: {}".format(flow.start())
 	authCode = raw_input("Enter auth code here: ").strip()
 	# finish the authorization and grab the Dropbox client
 	(accessToken, userID) = flow.finish(authCode)
 	client = DropboxClient(accessToken)
 	print "[SUCCESS] dropbox account linked"
 # initialize the camera and grab a reference to the raw camera capture
-camera = PiCamera() camera.resolution = tuple(conf["resolution"]) 
-camera.framerate = conf["fps"] rawCapture = PiRGBArray(camera, 
-size=tuple(conf["resolution"]))
+camera = PiCamera() 
+camera.resolution = tuple(conf["resolution"]) 
+camera.framerate = conf["fps"] 
+rawCapture = PiRGBArray(camera, size=tuple(conf["resolution"]))
 # allow the camera to warmup, then initialize the average frame, last 
 # uploaded timestamp, and frame motion counter
-print "[INFO] warming up..." time.sleep(conf["camera_warmup_time"]) avg 
-= None lastUploaded = datetime.datetime.now() motionCounter = 0
+print "[INFO] warming up..."
+time.sleep(conf["camera_warmup_time"])
+avg= None 
+lastUploaded = datetime.datetime.now()
+motionCounter = 0
 # capture frames from the camera
-for f in camera.capture_continuous(rawCapture, format="bgr", 
-use_video_port=True):
+for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 	# grab the raw NumPy array representing the image and initialize 
 	# the timestamp and occupied/unoccupied text
 	frame = f.array
@@ -70,11 +73,9 @@ use_video_port=True):
 	frameDelta = cv2.absdiff(gray, cv2.convertScaleAbs(avg))
 	# threshold the delta image, dilate the thresholded image to 
 	# fill in holes, then find contours on thresholded image
-	thresh = cv2.threshold(frameDelta, conf["delta_thresh"], 255,
-		cv2.THRESH_BINARY)[1]
+	thresh = cv2.threshold(frameDelta, conf["delta_thresh"], 255,cv2.THRESH_BINARY)[1]
 	thresh = cv2.dilate(thresh, None, iterations=2)
-	(cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
-		cv2.CHAIN_APPROX_SIMPLE)
+        (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2:]
 	# loop over the contours
 	for c in cnts:
 		# if the contour is too small, ignore it
@@ -83,21 +84,16 @@ use_video_port=True):
 		# compute the bounding box for the contour, draw it on 
 		# the frame, and update the text
 		(x, y, w, h) = cv2.boundingRect(c)
-		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 
-0), 2)
+		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 		text = "Occupied"
 	# draw the text and timestamp on the frame
 	ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
-	cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
-		cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-	cv2.putText(frame, ts, (10, frame.shape[0] - 10), 
-cv2.FONT_HERSHEY_SIMPLEX,
-		0.35, (0, 0, 255), 1)
+	cv2.putText(frame, "Room Status: {}".format(text), (10, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+	cv2.putText(frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,0.35, (0, 0, 255), 1)
 	# check to see if the room is occupied
 	if text == "Occupied":
 		# check to see if enough time has passed between uploads
-		if (timestamp - lastUploaded).seconds >= 
-conf["min_upload_seconds"]:
+		if (timestamp - lastUploaded).seconds >= conf["min_upload_seconds"]:
 			# increment the motion counter
 			motionCounter += 1
 			# check to see if the number of frames with 
@@ -112,12 +108,8 @@ conf["min_upload_seconds"]:
 					# upload the image to Dropbox 
 					# and cleanup the tempory image
 					print "[UPLOAD] {}".format(ts)
-					path = 
-"{base_path}/{timestamp}.jpg".format(
-						base_path=conf["dropbox_base_path"], 
-timestamp=ts)
-					client.put_file(path, 
-open(t.path, "rb"))
+					path ="{base_path}/{timestamp}.jpg".format(base_path=conf["dropbox_base_path"],timestamp=ts)
+					client.put_file(path, open(t.path, "rb"))
 					t.cleanup()
 				# update the last uploaded timestamp and 
 				# reset the motion counter
